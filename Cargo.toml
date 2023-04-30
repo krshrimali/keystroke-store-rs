@@ -6,4 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rdev = "0.5.2"
+kafka = "0.9.0"
+rdev = {version="0.5.2", features=["serialize"]}
+serde = {version="1.0.160", features=["derive"]}
+serde_json = "*"
