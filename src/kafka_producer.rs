@@ -16,11 +16,7 @@ pub fn send_to_kafka(msg: Key) {
     println!("SENT");
 }
 
-fn produce_message<'a, 'b>(
-    data: &'a [u8],
-    topic: &'b str,
-    brokers: Vec<String>,
-) -> Result<(), KafkaError> {
+fn produce_message(data: &[u8], topic: &str, brokers: Vec<String>) -> Result<(), KafkaError> {
     let mut producer = Producer::from_hosts(brokers)
         .with_ack_timeout(Duration::from_secs(1))
         .with_required_acks(RequiredAcks::One)
