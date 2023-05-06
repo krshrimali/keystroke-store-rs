@@ -10,7 +10,6 @@ use log::{info, warn};
 
 use crate::kafka_producer;
 
-
 #[allow(unused)]
 pub enum KeyEvent {
     ValidKey(),
@@ -30,6 +29,8 @@ impl EventHandler {
 
     fn _handle_keyboard_press_event(key: Option<Key>) {
         info!("Key pressed: {:?}", key);
+        // TODO:
+        // Consider if a key is just pressed and not released immediate after, which could mean possible repetitions of keys for some Operating Systems like Linux (In OSX, I believe you need to change some settings)
         if let Some(key_pressed) = key {
             EventHandler::send_key(key_pressed);
             kafka_producer::send_to_kafka(key_pressed);

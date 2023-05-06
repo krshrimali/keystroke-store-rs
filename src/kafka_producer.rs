@@ -9,6 +9,9 @@ pub fn send_to_kafka(key_msg: Key) {
     let topic = "test";
 
     let key_data = serde_json::to_string(&key_msg).unwrap();
+    // TODO: (@krshrimali)
+    // 1. This should not be here, consider moving to the place where events are fetched.
+    // 2. Shift to chrono::offset::Utc::now() from Local::now(), local timezone helps me test better for now.
     let msg: String = key_data + " " + &chrono::offset::Local::now().to_string();
 
     if let Err(e) = produce_message(msg.as_bytes(), topic, vec![broker.to_owned()]) {
