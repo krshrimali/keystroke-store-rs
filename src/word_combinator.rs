@@ -6,9 +6,10 @@ use rdev::Event;
 use rdev::EventType;
 use rdev::Key;
 
+use log::{info, warn};
+
 use crate::kafka_producer;
 
-use log::{info, warn};
 
 #[allow(unused)]
 pub enum KeyEvent {

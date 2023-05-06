@@ -3,14 +3,15 @@ use kafka::producer::{Producer, Record, RequiredAcks};
 use rdev::Key;
 use std::time::Duration;
 
-pub fn send_to_kafka(msg: Key) {
+pub fn send_to_kafka(key_msg: Key) {
     // env_logger::init();
     let broker = "localhost:9092";
     let topic = "test";
 
-    let data = serde_json::to_string(&msg).unwrap();
+    let key_data = serde_json::to_string(&key_msg).unwrap();
+    let msg: String = key_data + " " + &chrono::offset::Local::now().to_string();
 
-    if let Err(e) = produce_message(data.as_bytes(), topic, vec![broker.to_owned()]) {
+    if let Err(e) = produce_message(msg.as_bytes(), topic, vec![broker.to_owned()]) {
         println!("Failed producing messages: {:?}", e);
     }
     println!("SENT");
