@@ -1,9 +1,14 @@
+extern crate env_logger;
+extern crate log;
+
 use rdev::listen;
 use rdev::Event;
 use rdev::EventType;
 use rdev::Key;
 
 use crate::kafka_producer;
+
+use log::{info, warn};
 
 #[allow(unused)]
 pub enum KeyEvent {
@@ -18,38 +23,43 @@ pub struct NextStep {}
 pub struct EventHandler {}
 
 impl EventHandler {
-    fn handle_keyboard_events(event_type: EventType) {
-        // it's safe to assume that the event will always be either KeyPress or KeyRelease event, this is handled one level up (callback fn)
-        let key_context: Option<rdev::Key> = match event_type {
-            EventType::KeyPress(key) => Some(key),
-            EventType::KeyRelease(_) => None,
-            _ => None,
-        };
-        if let Some(key_) = key_context {
-            // Need to write a logger and logger DB
-            println!("Key context: {:?}", key_);
-            kafka_producer::send_to_kafka(key_);
+    fn send_key(key: Key) {
+        kafka_producer::send_to_kafka(key);
+    }
+
+    fn _handle_keyboard_press_event(key: Option<Key>) {
+        info!("Key pressed: {:?}", key);
+        if let Some(key_pressed) = key {
+            EventHandler::send_key(key_pressed);
+            kafka_producer::send_to_kafka(key_pressed);
         }
+    }
+
+    fn _handle_keyboard_release_event(key: Option<Key>) {
+        info!("Key released: {:?}", key);
+        if let Some(key_released) = key {
+            EventHandler::send_key(key_released);
+            kafka_producer::send_to_kafka(key_released);
+        }
+    }
+
+    fn handle_keyboard_events(event_type: EventType, key: Option<Key>) {
+        // it's safe to assume that the event will always be either KeyPress or KeyRelease event, this is handled one level up (NextStep::start_listening fn)
+        match event_type {
+            EventType::KeyPress(key) => EventHandler::_handle_keyboard_press_event(Some(key)),
+            EventType::KeyRelease(key) => EventHandler::_handle_keyboard_release_event(Some(key)),
+            event => {
+                warn!("Unexpected event {:?} found", event);
+            }
+        };
     }
 
     fn skip_mouse_events(event_type: EventType) {
-        println!("Event Type skipped: {:?}", event_type);
+        info!("Event Type skipped: {:?}", event_type);
     }
 
     fn skip_button_events(event_type: EventType) {
-        println!("Event Type skipped: {:?}", event_type);
-    }
-}
-
-pub fn callback(event: Event) {
-    match event.event_type {
-        rdev::EventType::KeyPress(_) => {
-            EventHandler::handle_keyboard_events(event.event_type);
-        }
-        rdev::EventType::KeyRelease(_) => {
-            EventHandler::handle_keyboard_events(event.event_type);
-        }
-        _ => (),
+        info!("Event Type skipped: {:?}", event_type);
     }
 }
 
@@ -57,10 +67,10 @@ impl NextStep {
     pub fn start_listening(event: Event) {
         match event.event_type {
             rdev::EventType::KeyPress(key_pressed) => {
-                EventHandler::handle_keyboard_events(event.event_type);
+                EventHandler::handle_keyboard_events(event.event_type, key_pressed.into());
             }
             rdev::EventType::KeyRelease(key_released) => {
-                EventHandler::handle_keyboard_events(event.event_type);
+                EventHandler::handle_keyboard_events(event.event_type, key_released.into());
             }
             rdev::EventType::Wheel {
                 delta_x: _,
@@ -81,6 +91,8 @@ impl NextStep {
     }
 
     pub fn start() {
+        env_logger::init();
+
         /* Start fetching the first event */
         if let Err(error) = listen(NextStep::start_listening) {
             println!("Error: {:?}", error);
