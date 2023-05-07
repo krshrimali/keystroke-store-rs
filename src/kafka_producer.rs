@@ -3,24 +3,24 @@ use kafka::producer::{Producer, Record, RequiredAcks};
 use rdev::Key;
 use std::time::Duration;
 
-pub fn send_to_kafka(msg: Key) {
+pub fn send_to_kafka(key_msg: Key) {
     // env_logger::init();
     let broker = "localhost:9092";
     let topic = "test";
 
-    let data = serde_json::to_string(&msg).unwrap();
+    let key_data = serde_json::to_string(&key_msg).unwrap();
+    // TODO: (@krshrimali)
+    // 1. This should not be here, consider moving to the place where events are fetched.
+    // 2. Shift to chrono::offset::Utc::now() from Local::now(), local timezone helps me test better for now.
+    let msg: String = key_data + " " + &chrono::offset::Local::now().to_string();
 
-    if let Err(e) = produce_message(data.as_bytes(), topic, vec![broker.to_owned()]) {
+    if let Err(e) = produce_message(msg.as_bytes(), topic, vec![broker.to_owned()]) {
         println!("Failed producing messages: {:?}", e);
     }
     println!("SENT");
 }
 
-fn produce_message<'a, 'b>(
-    data: &'a [u8],
-    topic: &'b str,
-    brokers: Vec<String>,
-) -> Result<(), KafkaError> {
+fn produce_message(data: &[u8], topic: &str, brokers: Vec<String>) -> Result<(), KafkaError> {
     let mut producer = Producer::from_hosts(brokers)
         .with_ack_timeout(Duration::from_secs(1))
         .with_required_acks(RequiredAcks::One)
