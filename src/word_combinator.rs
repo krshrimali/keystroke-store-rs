@@ -5,6 +5,7 @@ use rdev::listen;
 use rdev::Event;
 use rdev::EventType;
 use rdev::Key;
+use std::fmt;
 
 use log::{info, warn};
 
@@ -19,48 +20,68 @@ pub enum KeyEvent {
     Other(),
 }
 
+// #[derive(Default)]
+struct Data {
+    key: String,
+    timestamp: String,
+}
+
+impl fmt::Display for Data {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Key: {}, TS: {}", self.key, self.timestamp)
+    }
+}
+
 pub struct NextStep {}
-pub struct EventHandler {}
+#[derive(Default)]
+pub struct EventHandler {
+    output_data: Data,
+}
 
 impl EventHandler {
-    fn send_key(key: Key) {
-        kafka_producer::send_to_kafka(key);
+    fn send_key_with_data(&self) {
+        kafka_producer::send_to_kafka(&self.output_data.to_string());
     }
 
-    fn _handle_keyboard_press_event(key: Option<Key>) {
+    fn _hydrate_data(&self, key_in_context: &String) {
+        let utc_curr_ts = chrono::Utc::now().to_string();
+        let msg_json = r#"{"key": key_in_context, "ts": utc_curr_ts}"#;
+        self.output_data = serde_json::from_str(msg_json).unwrap();
+    }
+
+    fn _handle_keyboard_press_event(&self, key: Option<Key>) {
         info!("Key pressed: {:?}", key);
         // TODO:
         // Consider if a key is just pressed and not released immediate after, which could mean possible repetitions of keys for some Operating Systems like Linux (In OSX, I believe you need to change some settings)
         if let Some(key_pressed) = key {
-            EventHandler::send_key(key_pressed);
-            kafka_producer::send_to_kafka(key_pressed);
+            self._hydrate_data(key_pressed);
+            self.send_key_with_data();
         }
     }
 
-    fn _handle_keyboard_release_event(key: Option<Key>) {
+    fn _handle_keyboard_release_event(&self, key: Option<Key>) {
         info!("Key released: {:?}", key);
         if let Some(key_released) = key {
-            EventHandler::send_key(key_released);
-            kafka_producer::send_to_kafka(key_released);
+            self.send_key_with_data();
         }
     }
 
-    fn handle_keyboard_events(event_type: EventType, key: Option<Key>) {
+    fn handle_keyboard_events(&self, event_type: EventType, key: Option<Key>) {
         // it's safe to assume that the event will always be either KeyPress or KeyRelease event, this is handled one level up (NextStep::start_listening fn)
         match event_type {
-            EventType::KeyPress(key) => EventHandler::_handle_keyboard_press_event(Some(key)),
-            EventType::KeyRelease(key) => EventHandler::_handle_keyboard_release_event(Some(key)),
+            EventType::KeyPress(key) => self._handle_keyboard_press_event(Some(key)),
+            EventType::KeyRelease(key) => self._handle_keyboard_release_event(Some(key)),
             event => {
                 warn!("Unexpected event {:?} found", event);
             }
         };
     }
 
-    fn skip_mouse_events(event_type: EventType) {
+    fn skip_mouse_events(&self, event_type: EventType) {
         info!("Event Type skipped: {:?}", event_type);
     }
 
-    fn skip_button_events(event_type: EventType) {
+    fn skip_button_events(&self, event_type: EventType) {
         info!("Event Type skipped: {:?}", event_type);
     }
 }
@@ -69,25 +90,27 @@ impl NextStep {
     pub fn start_listening(event: Event) {
         match event.event_type {
             rdev::EventType::KeyPress(key_pressed) => {
-                EventHandler::handle_keyboard_events(event.event_type, key_pressed.into());
+                EventHandler::default()
+                    .handle_keyboard_events(event.event_type, key_pressed.into());
             }
             rdev::EventType::KeyRelease(key_released) => {
-                EventHandler::handle_keyboard_events(event.event_type, key_released.into());
+                EventHandler::default()
+                    .handle_keyboard_events(event.event_type, key_released.into());
             }
             rdev::EventType::Wheel {
                 delta_x: _,
                 delta_y: _,
             } => {
-                EventHandler::skip_mouse_events(event.event_type);
+                EventHandler::default().skip_mouse_events(event.event_type);
             }
             rdev::EventType::MouseMove { x: _, y: _ } => {
-                EventHandler::skip_mouse_events(event.event_type);
+                EventHandler::default().skip_mouse_events(event.event_type);
             }
             rdev::EventType::ButtonPress(button_pressed) => {
-                EventHandler::skip_button_events(event.event_type);
+                EventHandler::default().skip_button_events(event.event_type);
             }
             rdev::EventType::ButtonRelease(button_released) => {
-                EventHandler::skip_button_events(event.event_type);
+                EventHandler::default().skip_button_events(event.event_type);
             }
         }
     }
