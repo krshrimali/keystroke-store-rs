@@ -1,20 +1,19 @@
 use kafka::error::Error as KafkaError;
 use kafka::producer::{Producer, Record, RequiredAcks};
-use rdev::Key;
 use std::time::Duration;
 
-pub fn send_to_kafka(key_msg: Key) {
+pub fn send_to_kafka(key_msg: &String) {
     // env_logger::init();
     let broker = "localhost:9092";
     let topic = "test";
 
-    let key_data = serde_json::to_string(&key_msg).unwrap();
+    // let key_data = serde_json::to_string(&key_msg).unwrap();
     // TODO: (@krshrimali)
     // 1. This should not be here, consider moving to the place where events are fetched.
     // 2. Shift to chrono::offset::Utc::now() from Local::now(), local timezone helps me test better for now.
-    let msg: String = key_data + " " + &chrono::offset::Local::now().to_string();
+    // let msg: String = key_msg + " " + &chrono::offset::Local::now().to_string();
 
-    if let Err(e) = produce_message(msg.as_bytes(), topic, vec![broker.to_owned()]) {
+    if let Err(e) = produce_message(key_msg.as_bytes(), topic, vec![broker.to_owned()]) {
         println!("Failed producing messages: {:?}", e);
     }
     println!("SENT");
