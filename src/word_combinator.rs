@@ -71,16 +71,13 @@ impl EventHandler {
         kafka_producer::send_to_kafka(&self.output_data.to_string());
     }
 
-    fn _hydrate_data(&mut self, counter: i32, key_in_context: &Key) {
+    fn _hydrate_data(&mut self, counter: Option<i32>, key_in_context: &Key) {
         let utc_curr_ts = chrono::Utc::now();
-        let msg_json = format!(
-            r#"{{
-                "id": {counter},
-                "key": "{key_in_context:?}",
-                "timestamp": "{utc_curr_ts}"
-            }}"#
-        );
-        self.output_data = serde_json::from_str(&msg_json).unwrap();
+        self.output_data.key = format!("{key_in_context:?}");
+        self.output_data.timestamp = utc_curr_ts.to_string();
+        if let Some(valid_counter) = counter {
+            self.output_data.id = valid_counter;
+        }
     }
 
     fn _handle_keyboard_press_event(&mut self, counter: i32, key: Option<Key>) {
@@ -88,14 +85,15 @@ impl EventHandler {
         // TODO:
         // Consider if a key is just pressed and not released immediate after, which could mean possible repetitions of keys for some Operating Systems like Linux (In OSX, I believe you need to change some settings)
         if let Some(key_pressed) = key {
-            self._hydrate_data(counter, &key_pressed);
+            self._hydrate_data(Some(counter), &key_pressed);
             self.send_key_with_data();
         }
     }
 
-    fn _handle_keyboard_release_event(&self, key: Option<Key>) {
+    fn _handle_keyboard_release_event(&mut self, counter: i32, key: Option<Key>) {
         info!("Key released: {:?}", key);
-        if key.is_some() {
+        if let Some(key_released) = key {
+            self._hydrate_data(Some(counter), &key_released);
             self.send_key_with_data();
         }
     }
@@ -104,7 +102,7 @@ impl EventHandler {
         // it's safe to assume that the event will always be either KeyPress or KeyRelease event, this is handled one level up (NextStep::start_listening fn)
         match event_type {
             EventType::KeyPress(key) => self._handle_keyboard_press_event(counter, Some(key)),
-            EventType::KeyRelease(key) => self._handle_keyboard_release_event(Some(key)),
+            EventType::KeyRelease(key) => self._handle_keyboard_release_event(counter, Some(key)),
             event => {
                 warn!("Unexpected event {:?} found", event);
             }
