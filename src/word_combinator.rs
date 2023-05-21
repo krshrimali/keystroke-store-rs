@@ -49,7 +49,11 @@ impl DataArray {
 
 impl fmt::Display for Data {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ID: {}, Key: {}, TS: {}", self.id, self.key, self.timestamp)
+        write!(
+            f,
+            "ID: {}, Key: {}, TS: {}",
+            self.id, self.key, self.timestamp
+        )
     }
 }
 
@@ -125,12 +129,18 @@ impl NextStep {
         match event.event_type {
             rdev::EventType::KeyPress(key_pressed) => {
                 self.counter += 1;
-                EventHandler::default()
-                    .handle_keyboard_events(self.counter, event.event_type, key_pressed.into());
+                EventHandler::default().handle_keyboard_events(
+                    self.counter,
+                    event.event_type,
+                    key_pressed.into(),
+                );
             }
             rdev::EventType::KeyRelease(key_released) => {
-                EventHandler::default()
-                    .handle_keyboard_events(self.counter, event.event_type, key_released.into());
+                EventHandler::default().handle_keyboard_events(
+                    self.counter,
+                    event.event_type,
+                    key_released.into(),
+                );
             }
             rdev::EventType::Wheel {
                 delta_x: _,
