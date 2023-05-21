@@ -12,6 +12,8 @@ use log::{info, warn};
 
 use crate::kafka_producer;
 
+static mut COUNTER: i32 = 0;
+
 #[allow(unused)]
 pub enum KeyEvent {
     ValidKey(),
@@ -57,9 +59,7 @@ impl fmt::Display for Data {
     }
 }
 
-pub struct NextStep {
-    counter: i32,
-}
+pub struct NextStep {}
 
 #[derive(Default)]
 pub struct EventHandler {
@@ -121,27 +121,23 @@ impl EventHandler {
 }
 
 impl NextStep {
-    pub fn new() -> Self {
-        Self::new()
-    }
-
     pub fn start_listening(event: Event) {
         match event.event_type {
-            rdev::EventType::KeyPress(key_pressed) => {
-                self.counter += 1;
+            rdev::EventType::KeyPress(key_pressed) => unsafe {
+                COUNTER += 1;
                 EventHandler::default().handle_keyboard_events(
-                    self.counter,
+                    COUNTER,
                     event.event_type,
                     key_pressed.into(),
                 );
-            }
-            rdev::EventType::KeyRelease(key_released) => {
+            },
+            rdev::EventType::KeyRelease(key_released) => unsafe {
                 EventHandler::default().handle_keyboard_events(
-                    self.counter,
+                    COUNTER,
                     event.event_type,
                     key_released.into(),
                 );
-            }
+            },
             rdev::EventType::Wheel {
                 delta_x: _,
                 delta_y: _,
