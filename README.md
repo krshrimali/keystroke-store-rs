@@ -2,6 +2,8 @@
 
 This is a small application that will run in the background and stores all the keystrokes events in a database.
 
+Consumer repository: https://github.com/krshrimali/keystroke-consumer-rs
+
 ## Plan
 
 1. Figure out:
